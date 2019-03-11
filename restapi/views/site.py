@@ -5,6 +5,7 @@ import io
 import json
 import os
 import random
+from urllib.request import urlopen
 # Django
 from django.db.models import Count
 # Django Rest Framework
@@ -53,10 +54,14 @@ class GetAyah(APIView):
         line_length = request.GET.get('line_length') or 200
 
         # Load the Arabic Quran from JSON
-        file_name = os.path.join(BASE_DIR, 'utils/data-words.json')
-        with io.open(file_name, 'r', encoding='utf-8-sig') as file:
-            quran = json.load(file)
-            file.close()
+        URL = 'https://uc520b745555b7bcf9da297533da.dl.dropboxusercontent.com/cd/0/get/' \
+              'Ac4fYqiJ-3hSJn4gp2_jyb9dlZhwJ2uJH3NG0SpImV26CQoGjFwaJ0umMXxjxInOdnHAWtCz' \
+              'DabpG--i50qu6VYSUstHSStzflEXgACwEYwDiNysbQX078k6ZUez4n4WZz0/file?dl=1'
+        data = urlopen(URL)
+        data_str = ''
+        for line in data:
+            data_str += line.decode('utf-8')
+        quran = json.loads(data)
 
         # Load the Arabic Quran from JSON
         file_name = os.path.join(BASE_DIR, 'utils/data-uthmani.json')
@@ -80,10 +85,14 @@ class GetAyah(APIView):
     def post(self, request, *args, **kwargs):
 
         # Load the Arabic Quran from JSON
-        file_name = os.path.join(BASE_DIR, 'utils/data-words.json')
-        with io.open(file_name, 'r', encoding='utf-8-sig') as file:
-            quran = json.load(file)
-            file.close()
+        URL = 'https://uc520b745555b7bcf9da297533da.dl.dropboxusercontent.com/cd/0/get/' \
+              'Ac4fYqiJ-3hSJn4gp2_jyb9dlZhwJ2uJH3NG0SpImV26CQoGjFwaJ0umMXxjxInOdnHAWtCz' \
+              'DabpG--i50qu6VYSUstHSStzflEXgACwEYwDiNysbQX078k6ZUez4n4WZz0/file?dl=1'
+        data = urlopen(URL)
+        data_str = ''
+        for line in data:
+            data_str += line.decode('utf-8')
+        quran = json.loads(data)
 
         surah = str(request.data['surah'])
         ayah = int(request.data['ayah'])
