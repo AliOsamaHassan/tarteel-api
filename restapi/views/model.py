@@ -39,7 +39,7 @@ STRING_NA_VALUE = "N/A"
 
 class AnnotatedRecordingList(APIView):
     parser_classes = (MultiPartParser, FormParser, JSONParser)
-    permission_classes = (RecordingPermissions,)
+    # permission_classes = (RecordingPermissions,)
 
     def get(self, request, format=None):
         """Returns the last 10 recordings received."""
@@ -94,7 +94,7 @@ class AnnotatedRecordingViewSet(viewsets.ModelViewSet):
     queryset = AnnotatedRecording.objects.all()
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = AnnotatedRecordingFilter
-    permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
+    # permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
 
 class EvaluationFilter(filters.FilterSet):

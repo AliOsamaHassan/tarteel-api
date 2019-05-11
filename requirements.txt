@@ -1,3 +1,4 @@
+awscli==1.16.152
 boto3==1.9.82
 djangorestframework==3.7.7
 django==2.1.7
@@ -9,7 +10,7 @@ django-storages==1.7.1
 django-environ==0.4.5
 future==0.16.0
 gunicorn==19.9.0
-python-dateutil==2.6.1
-django-cors-headers==2.4.0
-zappa==0.47.1
+jmespath==0.9.3
 psycopg2==2.7.7
+python-dateutil==2.6.1
+zappa==0.48.2
