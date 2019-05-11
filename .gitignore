@@ -1,4 +1,5 @@
 # Tarteel specific files
+keyfile
 tarteel/settings_prod.py
 /static
 /media

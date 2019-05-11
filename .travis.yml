@@ -1,0 +1,23 @@
+language: python
+python: '3.6'
+cache: pip
+before_install:
+- openssl aes-256-cbc -K $encrypted_721a23b33185_key -iv $encrypted_721a23b33185_iv
+  -in keyfile.enc -out keyfile -d
+install:
+- pip install -r requirements.txt
+- sudo bash install_gitcrypt.sh
+
+jobs:
+  include:
+  - stage: test
+    name: Tests
+    script: echo "TODO tests"
+
+before_deploy: git-crypt unlock keyfile
+deploy:
+  provider: script
+  script: "./zappa_deploy.sh"
+  on:
+    all_branches: true
+    condition: $TRAVIS_BRANCH =~ ^develop|master|travis-test$

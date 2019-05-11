@@ -147,37 +147,11 @@ WSGI_APPLICATION = 'tarteel.wsgi.application'
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 if USE_PROD_DB:
-    DATABASES = {
-        'default':
-            env.db('PSQL_URL')
-            # {
-            # 'ENGINE'  : 'django.db.backends.postgresql',
-            # 'NAME'    : 'tarteeldb',
-            # 'USER'    : 'root',
-            # 'PASSWORD': 'tarteel2019',
-            # 'HOST': 'localhost',
-            # 'PORT': '8686'
-            # 'HOST'    : 'tarteeldb.ctqaquwebud0.us-west-2.rds.amazonaws.com',
-            # 'PORT'    : '5432',
-        # }
-    }
+    DATABASES = {'default': env.db('PSQL_URL')}
 elif USE_DEV_DB:
-    DATABASES = {
-        'default':
-            env.db('PSQL_DEV_URL')
-        # {
-            # 'ENGINE'  : 'django.db.backends.postgresql',
-            # 'NAME'    : 'tarteeldevdb',
-            # 'USER'    : 'root',
-            # 'PASSWORD': 'tarteeldevdb',
-            # 'HOST'    : 'tarteeldevdb.ctqaquwebud0.us-west-2.rds.amazonaws.com',
-            # 'PORT'    : '5432',
-        # }
-    }
+    DATABASES = {'default': env.db('PSQL_DEV_URL')}
 elif USE_LOCAL_DB:
-    DATABASES = {
-        'default': env.db('SQLITE_URL')
-    }
+    DATABASES = {'default': env.db('SQLITE_URL')}
 
 
 # AUTHENTICATION
@@ -288,7 +262,8 @@ AWS_ACCESS_KEY_ID = env('AWS_ACCESS_KEY_ID', str, 'tarteel-frontend-dev')
 AWS_SECRET_ACCESS_KEY = env('AWS_SECRET_ACCESS_KEY', str, '')
 AWS_STORAGE_BUCKET_NAME = env('AWS_STORAGE_BUCKET_NAME', str, '')
 AWS_QUERYSTRING_EXPIRE = env('AWS_QUERYSTRING_EXPIRE', str, '157784630')
-DEFAULT_FILE_STORAGE = env('DEFAULT_FILE_STORAGE', str, 'django.core.files.storage.FileSystemStorage')
+DEFAULT_FILE_STORAGE = env('DEFAULT_FILE_STORAGE', str,
+                           'django.core.files.storage.FileSystemStorage')
 
 # TEMPLATES
 # ------------------------------------------------------------------------------
@@ -310,6 +285,9 @@ TEMPLATES = [
 ]
 
 REST_FRAMEWORK = {
+    'DEFAULT_PARSER_CLASSES': (
+        'rest_framework.parsers.JSONParser',
+    ),
     'DEFAULT_RENDERER_CLASSES': (
         'rest_framework.renderers.BrowsableAPIRenderer',
         'rest_framework.renderers.JSONRenderer',
