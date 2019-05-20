@@ -4,7 +4,7 @@ from django.db import models
 class Surah(models.Model):
     """Surah Model with Many-to-One relationship with Ayah Model."""
     name = models.CharField(max_length=32)
-    number = models.IntegerField()
+    number = models.IntegerField(default=0)
 
 
 class Ayah(models.Model):
@@ -21,7 +21,7 @@ class AyahWord(models.Model):
     text_madani = models.CharField(max_length=64)
     text_simple = models.CharField(max_length=64)
     code = models.CharField(max_length=32)
-    number = models.IntegerField()
+    number = models.IntegerField(default=0)
 
 
 class Translation(models.Model):
