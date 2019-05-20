@@ -12,6 +12,7 @@ import evaluation.views
 urlpatterns = [
     # Rest API v1
     path('v1/', include('restapi.urls')),
+    path('v1/', include('evaluation.urls')),
     # Iqra
     path('iqra/', include('iqra.urls')),
     # Top Level API
