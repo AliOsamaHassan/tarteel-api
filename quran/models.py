@@ -21,6 +21,7 @@ class AyahWord(models.Model):
     text_madani = models.CharField(max_length=64)
     text_simple = models.CharField(max_length=64)
     code = models.CharField(max_length=32)
+    number = models.IntegerField()
 
 
 class Translation(models.Model):

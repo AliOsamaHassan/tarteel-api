@@ -3,13 +3,6 @@ from rest_framework import serializers
 from restapi.models import AnnotatedRecording, DemographicInformation
 
 
-class AnnotatedRecordingSerializerPost(serializers.ModelSerializer):
-    class Meta:
-        model = AnnotatedRecording
-        fields = ('file', 'hash_string', 'surah_num', 'ayah_num', 'timestamp',
-                  'recitation_mode', 'associated_demographic', 'session_id')
-
-
 class DemographicInformationSerializer(serializers.ModelSerializer):
     session_id = serializers.CharField(required=True)
 
@@ -38,21 +31,15 @@ class DemographicInformationSerializer(serializers.ModelSerializer):
         return demographic
 
 
-class AnnotatedRecordingSerializerGet(serializers.ModelSerializer):
-    associated_demographic = DemographicInformationSerializer()
-
-    class Meta:
-        model = AnnotatedRecording
-        fields = ('file', 'hash_string', 'surah_num', 'ayah_num', 'timestamp',
-                  'session_id', 'recitation_mode', 'associated_demographic')
-
-
 class AnnotatedRecordingSerializer(serializers.ModelSerializer):
     associated_demographic = DemographicInformationSerializer()
 
     class Meta:
         model = AnnotatedRecording
         fields = '__all__'
+
+    def validate_file(self, value):
+        pass
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):

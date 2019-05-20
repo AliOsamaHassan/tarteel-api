@@ -3,9 +3,12 @@
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
-from django.forms import modelformset_factory
+from django.forms.models import model_to_dict
+from django_filters import rest_framework as filters
 # REST
+from rest_framework import serializers
 from rest_framework import status
+from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, renderer_classes
@@ -14,12 +17,12 @@ from rest_framework.renderers import JSONRenderer
 from evaluation.models import TajweedEvaluation, Evaluation
 from evaluation.serializers import TajweedEvaluationSerializer, EvaluationSerializer
 from restapi.models import AnnotatedRecording
+from quran.models import Ayah
 # Python
 import io
 import json
 import os
 import random
-from urllib.request import urlopen
 
 # =============================================== #
 #           Constant Global Definitions           #
@@ -105,6 +108,114 @@ def get_low_evaluation_count():
 # ================================= #
 
 
+class EvaluationFilter(filters.FilterSet):
+    EVAL_CHOICES = (
+        ('correct', 'Correct'),
+        ('incorrect', 'Incorrect')
+    )
+
+    surah = filters.NumberFilter(field_name='associated_recording__surah_num')
+    ayah = filters.NumberFilter(field_name='associated_recording__ayah_num')
+    evaluation = filters.ChoiceFilter(choices=EVAL_CHOICES)
+    associated_recording = filters.ModelChoiceFilter(
+            queryset=AnnotatedRecording.objects.all()
+    )
+
+    class Meta:
+        model = Evaluation
+        fields = ['surah', 'ayah', 'evaluation', 'associated_recording']
+
+
+class EvaluationViewSet(viewsets.ModelViewSet):
+    """API to handle query parameters
+    Example: v1/evaluations/?surah=114&ayah=1&evaluation=correct
+    """
+    serializer_class = EvaluationSerializer
+    queryset = Evaluation.objects.all()
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = EvaluationFilter
+
+
+class EvaluationList(APIView):
+    def get(self, request, *args, **kwargs):
+        random_recording = get_low_evaluation_count()
+
+        # Fields
+        surah_num = random_recording.surah_num
+        ayah_num = random_recording.ayah_num
+        audio_url = random_recording.file.url
+        ayah = Ayah.objects.get(surah__number=surah_num, number=ayah_num)
+        ayah = model_to_dict(ayah)
+        recording_id = random_recording.id
+
+        ayah["audio_url"] = audio_url
+        ayah["recording_id"] = recording_id
+
+        return Response(ayah)
+
+    def post(self, request, *args, **kwargs):
+        print("POST evaluator/:\n{}".format(request.data))
+        ayah_num = int(request.data['ayah'])
+        surah_num = str(request.data['surah'])
+
+        if "recording_id" in request.data:
+            recording_id = request.data['recording_id']
+            recording = AnnotatedRecording.objects.get(id=recording_id)
+        else:
+            # This is the code of get_low_evaluation_count() but this is getting the
+            # choices of a specific ayah
+            recording_evals = AnnotatedRecording.objects.filter(
+                    surah_num=surah_num, ayah_num=ayah_num).annotate(
+                    total=Count('evaluation')
+            )
+            recording_evals_dict = {entry: entry.total for entry in recording_evals}
+
+            min_evals = min(recording_evals_dict.values())
+            min_evals_recordings = [
+                k for k, v in recording_evals_dict.items() if v == min_evals
+            ]
+
+            recording = {random.choice(min_evals_recordings)}
+
+        # Load the Arabic Quran from JSON
+        ayah = Ayah.objects.get(surah__number=surah_num, number=ayah_num)
+        ayah = model_to_dict(ayah)
+
+        if hasattr(recording, "file"):
+            ayah["audio_url"] = recording.file.url
+        ayah["recording_id"] = recording.id
+
+        return Response(ayah)
+
+
+class EvaluationSubmission(APIView):
+    def post(self, request, *args, **kwargs):
+        # User tracking - Ensure there is always a session key.
+        session_key = request.session.session_key
+
+        if hasattr(request.data, "session_id"):
+            session_key = request.data["session_id"]
+        elif not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+
+        ayah = request.data['ayah']
+        data = {
+            "session_id": session_key,
+            "associated_recording": ayah["recording_id"],
+            "evaluation": ayah["evaluation"]
+        }
+        new_evaluation = EvaluationSerializer(data=data)
+        try:
+            new_evaluation.is_valid(raise_exception=True)
+            new_evaluation.save()
+        except serializers.ValidationError:
+            return Response("Invalid serializer data.",
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(status=status.HTTP_201_CREATED)
+
+
 class TajweedEvaluationList(APIView):
     """API Endpoint that allows tajweed evaluations to be posted or
     retrieved """
@@ -186,51 +297,4 @@ def tajweed_evaluator(request):
                    'next_word_index': next_word_ind,
                    'audio_url': audio_url,
                    'recording_id': recording_id})
-
-
-class EvaluationList(APIView):
-    def get(self, request, *args, **kwargs):
-        random_recording = get_low_evaluation_count()
-        # Load the Uthmani Quran from JSON
-        quran_data_url = 'https://s3.amazonaws.com/zappa-tarteel-static/data-uthmani.json'
-        data_response = urlopen(quran_data_url)
-        json_data = data_response.read()
-        json_str = json_data.decode('utf-8-sig')
-        uthmani_quran = json.loads(json_str)
-        uthmani_quran = uthmani_quran['quran']
-        # file_name = os.path.join(BASE_DIR, 'utils/data-uthmani.json')
-        # with io.open(file_name, 'r', encoding='utf-8-sig') as file:
-        #     uthmani_quran = json.load(file)
-        #     uthmani_quran = uthmani_quran["quran"]
-
-        # Fields
-        surah_num = random_recording.surah_num
-        ayah_num = random_recording.ayah_num
-        audio_url = random_recording.file.url
-        ayah_text = uthmani_quran["surahs"][surah_num - 1]["ayahs"][ayah_num - 1]["text"]
-        recording_id = random_recording.id
-        res = {
-            "audio_url": audio_url,
-            "ayah_text": ayah_text,
-            "recording_id": recording_id,
-            "surah_num": surah_num,
-            "ayah_num": ayah_num
-        }
-        return Response(res)
-
-    def post(self, request, *args, **kwargs):
-        session_key = request.session.session_key or request.data["session_id"]
-        data = {
-            "session_id": session_key
-        }
-        ayah = request.data["ayah"]
-        data["associated_recording"] = ayah["recording_id"]
-        data["evaluation"] = ayah["evaluation"]
-        new_evaluation = EvaluationSerializer(data=data)
-
-        if new_evaluation.is_valid(raise_exception=True):
-            new_evaluation.save()
-            return Response(status=status.HTTP_201_CREATED)
-        return Response("Invalid hash or timed out request",
-                        status=status.HTTP_400_BAD_REQUEST)
 

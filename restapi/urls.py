@@ -7,17 +7,10 @@ from . import views
 router = routers.DefaultRouter()
 
 router.register('recordings', views.model.AnnotatedRecordingViewSet)
-router.register('evaluation_set', views.model.EvaluationViewSet)
 router.register('demographic', views.model.DemographicViewSet)
 
 urlpatterns = [
-    path('demographics/', views.model.DemographicInformationViewList.as_view(),
-         name='demographics'),
-    path('get_ayah_translit/', views.model.get_ayah_translit),
     path('get_total_count/', views.RecordingsCount.as_view(), name='recordingscount'),
-    path('evaluator/', views.model.EvaluationList.as_view()),
-    path('submit_evaluation/', views.model.EvaluationSubmission.as_view(),
-         name="evaluation_submission"),
     # Site specific info
     path('get_ayah/', views.site.GetAyah.as_view(), name='get_ayah'),
     path('index/', views.site.Index.as_view(), name='api_index'),
