@@ -16,4 +16,4 @@ deploy:
   script: "./zappa_deploy.sh"
   on:
     all_branches: true
-    condition: $TRAVIS_BRANCH =~ ^develop|master|travis-test$
+    condition: $TRAVIS_BRANCH =~ ^develop|master$
