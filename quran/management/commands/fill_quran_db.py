@@ -4,15 +4,26 @@ from quran.models import Surah, Ayah, AyahWord, Translation
 from tqdm import tqdm
 
 DATA_JSON_PATH = '/home/piraka/Downloads/data-words.json'
+UTH_JSON_PATH = 'data-uthmani.json'
 
 
 class Command(BaseCommand):
     def handle(self, *args, **options):
+        # Get the surah names
+        with open(UTH_JSON_PATH, encoding='utf-8') as uth_json_file:
+            quran = json.load(uth_json_file)
+            quran = quran['quran']
+            surah_name_list = []
+            for i, surah in tqdm(enumerate(quran['surahs']), desc='Surah Names'):
+                surah_name_list.append(surah['name'])
+
         with open(DATA_JSON_PATH, encoding='utf-8') as data_json_file:
             data_file = json.load(data_json_file)
             # Go over each surah
             for surah, verses in tqdm(data_file.items(), desc='Surahs', total=114):
-                new_surah, created = Surah.objects.get_or_create(number=int(surah))
+                surah_num = int(surah)
+                new_surah, created = Surah.objects.get_or_create(
+                        number=surah_num, name_ar=surah_name_list[surah_num-1])
 
                 # Now go over all the ayahs
                 for verse in tqdm(verses['verses'], desc='Ayahs'):

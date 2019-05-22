@@ -3,11 +3,12 @@ from django.db import models
 
 class Surah(models.Model):
     """Surah Model with Many-to-One relationship with Ayah Model."""
-    name = models.CharField(max_length=32)
+    name_en = models.CharField(max_length=32)
+    name_ar = models.CharField(max_length=32)
     number = models.IntegerField(default=0)
 
     def __str__(self):
-        return "{} ({})".format(self.name, self.number)
+        return "{} ({})".format(self.name_en, self.number)
 
 
 class Ayah(models.Model):

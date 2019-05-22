@@ -25,6 +25,8 @@ class SurahViewSet(viewsets.ReadOnlyModelViewSet):
     """Read only view set for surahs."""
     queryset = Surah.objects.all()
     serializer_class = quran.serializers.SurahSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = SurahFilter
 
 
 class AyahFilter(filters.FilterSet):
@@ -42,6 +44,8 @@ class AyahViewSet(viewsets.ReadOnlyModelViewSet):
     """Read only view set for ayahs."""
     queryset = Ayah.objects.all()
     serializer_class = quran.serializers.AyahSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = AyahFilter
 
 
 class AyahWordFilter(filters.FilterSet):
@@ -59,6 +63,8 @@ class AyahWordViewSet(viewsets.ReadOnlyModelViewSet):
     """Read only view set for an ayah's words."""
     queryset = AyahWord.objects.all()
     serializer_class = quran.serializers.AyahWordSerializer
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = AyahWordFilter
 
 
 class TranslationFilter(filters.FilterSet):
@@ -77,6 +83,8 @@ class TranslationViewSet(viewsets.ReadOnlyModelViewSet):
     """Read only view set for an ayah's translation."""
     queryset = Translation.objects.all()
     serializer_class = quran.serializers.Translation
+    filter_backends = (filters.DjangoFilterBackend,)
+    filter_class = AyahWordFilter
 
 
 @api_view(['GET'])
