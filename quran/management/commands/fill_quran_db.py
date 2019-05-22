@@ -7,6 +7,7 @@ DATA_JSON_PATH = '/home/piraka/Downloads/data-words.json'
 UTH_JSON_PATH = 'data-uthmani.json'
 
 
+
 class Command(BaseCommand):
     def handle(self, *args, **options):
         # Get the surah names
@@ -16,7 +17,7 @@ class Command(BaseCommand):
             surah_name_list = []
             for i, surah in tqdm(enumerate(quran['surahs']), desc='Surah Names'):
                 surah_name_list.append(surah['name'])
-
+                
         with open(DATA_JSON_PATH, encoding='utf-8') as data_json_file:
             data_file = json.load(data_json_file)
             # Go over each surah
