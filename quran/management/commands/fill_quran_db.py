@@ -4,8 +4,7 @@ from quran.models import Surah, Ayah, AyahWord, Translation
 from tqdm import tqdm
 
 DATA_JSON_PATH = '/home/piraka/Downloads/data-words.json'
-UTH_JSON_PATH = 'data-uthmani.json'
-
+UTH_JSON_PATH = '/home/piraka/Downloads/data-uthmani.json'
 
 
 class Command(BaseCommand):

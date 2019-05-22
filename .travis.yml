@@ -9,7 +9,7 @@ install:
 - sudo bash install_gitcrypt.sh
 script:
   - git-crypt unlock keyfile
-  - python manage.py test
+  - ./manage.py drop_test_database --noinput && ./manage.py test && ./manage.py drop_test_database --noinput
 
 deploy:
   provider: script
