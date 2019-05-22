@@ -9,6 +9,7 @@ from django_filters import rest_framework as filters
 from rest_framework import serializers
 from rest_framework import status
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.decorators import api_view, renderer_classes
@@ -17,7 +18,7 @@ from rest_framework.renderers import JSONRenderer
 from evaluation.models import TajweedEvaluation, Evaluation
 from evaluation.serializers import TajweedEvaluationSerializer, EvaluationSerializer
 from restapi.models import AnnotatedRecording
-from quran.models import Ayah
+from quran.models import Ayah, AyahWord
 # Python
 import io
 import json
@@ -35,6 +36,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # ===================================== #
 
 
+# TODO: Update to use Quran DB
 def get_tajweed_rule(surah_num=0, ayah_num=0, random_rule=False):
     """If random_rule is true then we get a random tajweed rule. Otherwise returns a
     specific rule. Both options return the text and word index.
@@ -89,6 +91,7 @@ def is_evaluator(user):
     return False
 
 
+# TODO: Deprecated
 def get_low_evaluation_count():
     """Finds a recording with the lowest number of evaluations
     :returns: A random AnnotatedRecording object which has the minimum evaluations
@@ -103,12 +106,57 @@ def get_low_evaluation_count():
 
     return random.choice(min_evals_recordings)
 
-# ================================= #
-#           API Functions           #
-# ================================= #
+
+def get_no_evaluation_recording(surah_num=None, ayah_num=None):
+    """Finds a recording with the lowest number of evaluations
+    :returns: A random AnnotatedRecording object which has the minimum evaluations
+    along with its words, url and recording ID.
+    :rtype: dict
+    """
+    # Get recordings with a file.
+    if surah_num is not None and ayah_num is not None:
+        recording_evals = AnnotatedRecording.objects.filter(
+                surah_num=surah_num, ayah_num=ayah_num, file__gt='',
+                file__isnull=False).annotate(total=Count('evaluation'))
+        # If no recordings, move on to random one
+        try:
+            random_recording = random.choice(recording_evals)
+        except IndexError:
+            surah_num = None
+            ayah_num = None
+    if surah_num is None and ayah_num is None:
+        recording_evals = AnnotatedRecording.objects.filter(
+                file__gt='', file__isnull=False).annotate(total=Count('evaluation'))
+        try:
+            random_recording = random.choice(recording_evals)
+        except IndexError:
+            error_str = "No more unevaluated recordings!"
+            print(error_str)
+            return {'detail': error_str}
+        surah_num = random_recording.surah_num
+        ayah_num = random_recording.ayah_num
+
+    audio_url = random_recording.file.url
+    recording_id = random_recording.id
+    # Prep response
+    ayah = Ayah.objects.get(surah__number=surah_num, number=ayah_num)
+    ayah = model_to_dict(ayah)
+    # Get all the words
+    words = AyahWord.objects.filter(ayah__number=ayah_num,
+                                    ayah__surah__number=surah_num)
+    # Convert to list of dicts, note that order is usually flipped.
+    ayah['words'] = list(reversed(words.values()))
+    ayah["audio_url"] = audio_url
+    ayah["recording_id"] = recording_id
+    return ayah
+
+# ============================= #
+#           API Views           #
+# ============================= #
 
 
 class EvaluationFilter(filters.FilterSet):
+    """Custom filter based on surah, ayah, evaluation type or recording."""
     EVAL_CHOICES = (
         ('correct', 'Correct'),
         ('incorrect', 'Incorrect')
@@ -118,8 +166,7 @@ class EvaluationFilter(filters.FilterSet):
     ayah = filters.NumberFilter(field_name='associated_recording__ayah_num')
     evaluation = filters.ChoiceFilter(choices=EVAL_CHOICES)
     associated_recording = filters.ModelChoiceFilter(
-            queryset=AnnotatedRecording.objects.all()
-    )
+            queryset=AnnotatedRecording.objects.all())
 
     class Meta:
         model = Evaluation
@@ -135,85 +182,25 @@ class EvaluationViewSet(viewsets.ModelViewSet):
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = EvaluationFilter
 
-
-class EvaluationList(APIView):
-    def get(self, request, *args, **kwargs):
-        random_recording = get_low_evaluation_count()
-
-        # Fields
-        surah_num = random_recording.surah_num
-        ayah_num = random_recording.ayah_num
-        audio_url = random_recording.file.url
-        ayah = Ayah.objects.get(surah__number=surah_num, number=ayah_num)
-        ayah = model_to_dict(ayah)
-        recording_id = random_recording.id
-
-        ayah["audio_url"] = audio_url
-        ayah["recording_id"] = recording_id
-
+    @action(detail=False, methods=['get'])
+    def low_count(self, request):
+        """Finds a recording with the lowest number of evaluations
+        :returns: A random AnnotatedRecording object which has the minimum evaluations
+        :rtype: Response
+        """
+        ayah = get_no_evaluation_recording()
         return Response(ayah)
 
-    def post(self, request, *args, **kwargs):
-        print("POST evaluator/:\n{}".format(request.data))
+    @low_count.mapping.post
+    def low_count_specific(self, request):
+        """Get a recording of a specific surah and ayah with no evaluation.
+        :returns: A random AnnotatedRecording object which has the minimum evaluations
+        :rtype: Response
+        """
+        surah_num = int(request.data['surah'])
         ayah_num = int(request.data['ayah'])
-        surah_num = str(request.data['surah'])
-
-        if "recording_id" in request.data:
-            recording_id = request.data['recording_id']
-            recording = AnnotatedRecording.objects.get(id=recording_id)
-        else:
-            # This is the code of get_low_evaluation_count() but this is getting the
-            # choices of a specific ayah
-            recording_evals = AnnotatedRecording.objects.filter(
-                    surah_num=surah_num, ayah_num=ayah_num).annotate(
-                    total=Count('evaluation')
-            )
-            recording_evals_dict = {entry: entry.total for entry in recording_evals}
-
-            min_evals = min(recording_evals_dict.values())
-            min_evals_recordings = [
-                k for k, v in recording_evals_dict.items() if v == min_evals
-            ]
-
-            recording = {random.choice(min_evals_recordings)}
-
-        # Load the Arabic Quran from JSON
-        ayah = Ayah.objects.get(surah__number=surah_num, number=ayah_num)
-        ayah = model_to_dict(ayah)
-
-        if hasattr(recording, "file"):
-            ayah["audio_url"] = recording.file.url
-        ayah["recording_id"] = recording.id
-
+        ayah = get_no_evaluation_recording(surah_num=surah_num, ayah_num=ayah_num)
         return Response(ayah)
-
-
-class EvaluationSubmission(APIView):
-    def post(self, request, *args, **kwargs):
-        # User tracking - Ensure there is always a session key.
-        session_key = request.session.session_key
-
-        if hasattr(request.data, "session_id"):
-            session_key = request.data["session_id"]
-        elif not session_key:
-            request.session.create()
-            session_key = request.session.session_key
-
-        ayah = request.data['ayah']
-        data = {
-            "session_id": session_key,
-            "associated_recording": ayah["recording_id"],
-            "evaluation": ayah["evaluation"]
-        }
-        new_evaluation = EvaluationSerializer(data=data)
-        try:
-            new_evaluation.is_valid(raise_exception=True)
-            new_evaluation.save()
-        except serializers.ValidationError:
-            return Response("Invalid serializer data.",
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        return Response(status=status.HTTP_201_CREATED)
 
 
 class TajweedEvaluationList(APIView):

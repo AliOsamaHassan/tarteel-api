@@ -54,17 +54,21 @@ class Command(BaseCommand):
                         text_madani = word['text_madani']
                         text_simple = word['text_simple']
                         code = word['code']
-                        if text_madani is None or text_simple is None:
-                            continue
+                        class_name = word['class_name']
+                        char_type = word['char_type']
                         try:
                             new_word = AyahWord.objects.get(number=i,
                                                             ayah=new_ayah,
                                                             text_simple=text_simple,
-                                                            code=code)
+                                                            code=code,
+                                                            class_name=class_name,
+                                                            char_type=char_type)
                         except AyahWord.DoesNotExist:
                             new_word = AyahWord(number=i,
                                                 ayah=new_ayah,
                                                 text_madani=text_madani,
                                                 text_simple=text_simple,
-                                                code=code)
+                                                code=code,
+                                                class_name=class_name,
+                                                char_type=char_type)
                             new_word.save()

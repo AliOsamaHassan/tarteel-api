@@ -53,7 +53,7 @@ class TajweedEvaluation(models.Model):
         (SILENT, 'Silent')
     )
     session_id = models.CharField(max_length=32, blank=True)
-    platform = models.CharField(max_length=32, default='web')
+    platform = models.CharField(max_length=256, default='web')
     # Link the rule evaluation with a specific recording
     associated_recording = models.ForeignKey(AnnotatedRecording,
                                              on_delete=models.CASCADE,
@@ -72,9 +72,9 @@ class TajweedEvaluationForm(ModelForm):
 
 
 class Evaluation(models.Model):
-    session_id = models.CharField(max_length=32, blank=True)
+    session_id = models.CharField(max_length=64, blank=True)
     associated_recording = models.ForeignKey(AnnotatedRecording,
                                              on_delete=models.CASCADE,
                                              null=True)
-    platform = models.CharField(max_length=32, default='web')
+    platform = models.CharField(max_length=256, default='web')
     evaluation = models.CharField(max_length=32, default=False)
