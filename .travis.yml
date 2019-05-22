@@ -2,7 +2,8 @@ language: python
 python: '3.6'
 cache: pip
 before_install:
-- openssl aes-256-cbc -K $encrypted_2883e12ed14b_key -iv $encrypted_2883e12ed14b_iv -in keyfile.enc -out keyfile -d
+- openssl aes-256-cbc -K $encrypted_2883e12ed14b_key -iv $encrypted_2883e12ed14b_iv
+  -in keyfile.enc -out keyfile -d
 install:
 - pip install -r requirements.txt
 - sudo bash install_gitcrypt.sh
