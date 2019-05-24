@@ -7,6 +7,7 @@ import random
 from urllib.request import urlopen
 # Django
 from django.db.models import Count
+from django.forms.models import model_to_dict
 # Django Rest Framework
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,6 +15,7 @@ from rest_framework.response import Response
 from .utils import get_low_ayah_count, _sort_recitations_dict_into_lists
 from restapi.models import AnnotatedRecording, DemographicInformation
 from evaluation.models import Evaluation
+from quran.models import Ayah, AyahWord
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TOTAL_AYAH_NUM = 6236
@@ -152,28 +154,24 @@ class GetAyah(APIView):
         :return: A JSON response with the surah/ayah numbers, text, hash, ID, and image.
         :rtype: JsonResponse
         """
-
         # User tracking - Ensure there is always a session key.
         session_key = request.session.session_key
         if not session_key:
             request.session.create()
             session_key = request.session.session_key
 
-        line_length = request.GET.get('line_length') or 200
+        ayah_count = Ayah.objects.count() - 1
+        rand_index = random.randint(0, ayah_count)
+        rand_ayah = Ayah.objects.all()[rand_index]
+        surah_num = rand_ayah.surah__number
+        ayah_num = rand_ayah.number
+        words = AyahWord.objects.get(ayah=rand_ayah, ayah__number=ayah_num,
+                                     ayah__surah__number=surah_num)
+        ayah_dict = model_to_dict(rand_ayah)
+        ayah_dict['words'] = list(reversed(words.values()))
+        ayah_dict['session_id'] = session_key
 
-        # Load the Uthmani Quran from JSON
-        quran_data_url = 'https://s3.amazonaws.com/zappa-tarteel-static/data-uthmani.json'
-        data_response = urlopen(quran_data_url)
-        json_data = data_response.read()
-        json_str = json_data.decode('utf-8-sig')
-        quran = json.loads(json_str)
-        quran = quran['quran']
-
-        surah, ayah, line = get_low_ayah_count(quran, line_length)
-        ayah = quran['surahs'][surah - 1]['ayahs'][ayah - 1]
-        ayah['session_id'] = session_key
-
-        return Response(ayah)
+        return Response(ayah_dict)
 
 
 class GetSurah(APIView):
