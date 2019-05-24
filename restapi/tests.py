@@ -1,3 +1,5 @@
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.files import File
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -22,6 +24,13 @@ demographic_no_session_json_request = {
     "qiraah": None
 }
 
+recording_json_request = {
+    'surah_num': 1,
+    'ayah_num': 1,
+    'hash_string': 'abc123',
+    'recitation_mode': 'continuous',
+}
+
 
 class DemographicTestCase(APITestCase):
     def test_post_demographic(self):
@@ -36,8 +45,14 @@ class DemographicTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
 
-# class RecordingTestCase(APITestCase):
-#     def test_file_upload(self):
-#         audio_file_path = os.path.abspath(
-#                 os.path.join(os.path.dirname(__file__), '..', 'utils', 'test_audio.wav'))
-#         url = reverse('')
+class RecordingTestCase(APITestCase):
+    def test_file_upload(self):
+        audio_file_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), '..', 'utils', 'test_audio.wav'))
+        url = reverse('annotatedrecording-list')
+        with open(audio_file_path, 'rb') as audio_file:
+            # upload_file = SimpleUploadedFile('recording.wav', data.read(),
+            #                                  content_type='audio/x-wav')
+            recording_json_request['file'] = audio_file
+            response = self.client.post(url, recording_json_request)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)

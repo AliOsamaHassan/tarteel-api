@@ -24,5 +24,5 @@ class AnnotatedRecording(models.Model):
     session_id = models.CharField(max_length=32)
     is_evaluated = models.BooleanField(default=False)
     associated_demographic = models.ForeignKey(DemographicInformation,
-                                               on_delete=models.CASCADE,
+                                               on_delete=models.SET_NULL,
                                                blank=True, default=None, null=True)

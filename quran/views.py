@@ -1,5 +1,7 @@
+import random
 # Django
 from django_filters import rest_framework as filters
+from django.forms.models import model_to_dict
 # Django Rest Framework
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -46,6 +48,27 @@ class AyahViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = quran.serializers.AyahSerializer
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = AyahFilter
+
+    @action(detail=False, methods=['get'])
+    def random(self, request):
+        # User tracking - Ensure there is always a session key.
+        session_key = request.session.session_key
+        if not session_key:
+            request.session.create()
+            session_key = request.session.session_key
+
+        ayah_count = Ayah.objects.count() - 1
+        rand_index = random.randint(0, ayah_count)
+        rand_ayah = Ayah.objects.all()[rand_index]
+        surah_num = rand_ayah.surah.number
+        ayah_num = rand_ayah.number
+        words = AyahWord.objects.filter(ayah=rand_ayah, ayah__number=ayah_num,
+                                        ayah__surah__number=surah_num)
+        ayah_dict = model_to_dict(rand_ayah)
+        ayah_dict['words'] = list(reversed(words.values()))
+        ayah_dict['session_id'] = session_key
+
+        return Response(ayah_dict)
 
 
 class AyahWordFilter(filters.FilterSet):

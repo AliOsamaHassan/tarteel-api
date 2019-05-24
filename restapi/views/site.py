@@ -163,7 +163,7 @@ class GetAyah(APIView):
         ayah_count = Ayah.objects.count() - 1
         rand_index = random.randint(0, ayah_count)
         rand_ayah = Ayah.objects.all()[rand_index]
-        surah_num = rand_ayah.surah__number
+        surah_num = rand_ayah.surah.number
         ayah_num = rand_ayah.number
         words = AyahWord.objects.get(ayah=rand_ayah, ayah__number=ayah_num,
                                      ayah__surah__number=surah_num)

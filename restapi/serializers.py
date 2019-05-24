@@ -32,14 +32,14 @@ class DemographicInformationSerializer(serializers.ModelSerializer):
 
 
 class AnnotatedRecordingSerializer(serializers.ModelSerializer):
-    associated_demographic = DemographicInformationSerializer()
+    associated_demographic = DemographicInformationSerializer(required=False,
+                                                              default=None)
 
     class Meta:
         model = AnnotatedRecording
-        fields = '__all__'
-
-    def validate_file(self, value):
-        pass
+        fields = ('file', 'surah_num', 'ayah_num', 'hash_string', 'recitation_mode',
+                  'session_id', 'associated_demographic')
+        extra_kwargs = {'associated_demographic': {'required': False}}
 
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):

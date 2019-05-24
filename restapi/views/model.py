@@ -6,6 +6,7 @@ from django_filters import rest_framework as filters
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
 from rest_framework import permissions
 # Tarteel Apps
 from restapi.serializers import DemographicInformationSerializer, \
@@ -42,6 +43,7 @@ class AnnotatedRecordingViewSet(viewsets.ModelViewSet):
     queryset = AnnotatedRecording.objects.all()
     filter_backends = (filters.DjangoFilterBackend,)
     filter_class = AnnotatedRecordingFilter
+    parser_classes = (MultiPartParser,)
     # permission_classes = (permissions.IsAuthenticatedOrReadOnly,)
 
     def get_queryset(self):
