@@ -7,15 +7,13 @@ import random
 from urllib.request import urlopen
 # Django
 from django.db.models import Count
-from django.forms.models import model_to_dict
 # Django Rest Framework
 from rest_framework.views import APIView
 from rest_framework.response import Response
 # Tarteel Apps
-from .utils import get_low_ayah_count, _sort_recitations_dict_into_lists
+from .utils import _sort_recitations_dict_into_lists
 from restapi.models import AnnotatedRecording, DemographicInformation
 from evaluation.models import Evaluation
-from quran.models import Ayah, AyahWord
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 TOTAL_AYAH_NUM = 6236
@@ -82,15 +80,23 @@ class About(APIView):
             file__gt='', file__isnull=False).values(
             'surah_num', 'ayah_num').annotate(count=Count('pk')))
         raw_counts = [ayah['count'] for ayah in ayah_counts]
-        count_labels = ['0', '1', '2', '3', '4', '5+']
-        # noinspection PyListCreation
-        count_data = [
-            TOTAL_AYAH_NUM - len(ayah_counts),  # ayahs not in list have 0 count
-            raw_counts.count(1),
-            raw_counts.count(2),
-            raw_counts.count(3),
-            raw_counts.count(4)]
-        count_data.append(TOTAL_AYAH_NUM - sum(count_data))  # remaining have 5+ count
+
+        # Auto increment the labels based on the number of ayahs we have
+        min_count_limit = 50    # Minimum number of recordings to qualify for a label
+        label_limit = 20        # Max label number
+        max_label_count = 5     # Max number of labels
+        curr_label_count = 0    # How many labels we have so far
+        count_labels = []       # Store our labels
+        count_data = []         # Store the value for each label
+        for i in range(0, label_limit):
+            if curr_label_count >= max_label_count:
+                break   # Finished
+            if raw_counts.count(i) > min_count_limit:
+                curr_label_count += 1
+                count_labels.append(str(i))
+                count_data.append(raw_counts.count(i))
+        count_labels.append("{}+".format(str(i)))
+        count_data.append(TOTAL_AYAH_NUM - sum(count_data))
 
         # Add commas to this number as it is used for display.
         recording_count_formatted = "{:,}".format(recording_count)
@@ -128,50 +134,6 @@ class DownloadAudio(APIView):
         file_urls = [f.file.url for f in rand_files]
 
         return Response(file_urls)
-
-
-class RecordingsCount(APIView):
-    """
-    API endpoint that gets the total count of the recording files
-    """
-
-    def get(self, request, format=None):
-        recording_count = AnnotatedRecording.objects.filter(file__gt='',
-                                                            file__isnull=False).count()
-
-        return Response({"count": recording_count})
-
-
-class GetAyah(APIView):
-    # TODO: Create Post to fetch specific ayah
-    """Gets the surah num, ayah num, and text of an ayah of a specified maximum length."""
-
-    def get(self, request, format=None):
-        """Gets the surah num, ayah num, and text of an ayah of a specified maximum length.
-
-        :param request: rest API request object.
-        :type request: Request
-        :return: A JSON response with the surah/ayah numbers, text, hash, ID, and image.
-        :rtype: JsonResponse
-        """
-        # User tracking - Ensure there is always a session key.
-        session_key = request.session.session_key
-        if not session_key:
-            request.session.create()
-            session_key = request.session.session_key
-
-        ayah_count = Ayah.objects.count() - 1
-        rand_index = random.randint(0, ayah_count)
-        rand_ayah = Ayah.objects.all()[rand_index]
-        surah_num = rand_ayah.surah.number
-        ayah_num = rand_ayah.number
-        words = AyahWord.objects.get(ayah=rand_ayah, ayah__number=ayah_num,
-                                     ayah__surah__number=surah_num)
-        ayah_dict = model_to_dict(rand_ayah)
-        ayah_dict['words'] = list(reversed(words.values()))
-        ayah_dict['session_id'] = session_key
-
-        return Response(ayah_dict)
 
 
 class GetSurah(APIView):
@@ -227,7 +189,8 @@ class Index(APIView):
         yesterday = datetime.date.today() - datetime.timedelta(days=1)
 
         # Check if we need demographics for this session
-        ask_for_demographics = DemographicInformation.objects.filter(session_id=session_key).exists()
+        ask_for_demographics = DemographicInformation.objects.filter(
+                session_id=session_key).exists()
 
         daily_count = AnnotatedRecording.objects.filter(
             file__gt='', timestamp__gt=yesterday).exclude(file__isnull=True).count()
@@ -263,14 +226,18 @@ class Profile(APIView):
         last_week = datetime.date.today() - datetime.timedelta(days=7)
 
         # Get the weekly counts.
-        last_weeks = [datetime.date.today() - datetime.timedelta(days=days) for days in [6, 13, 20, 27, 34]]
+        last_weeks = [
+            datetime.date.today() - datetime.timedelta(days=days)
+            for days in [6, 13, 20, 27, 34]
+        ]
         dates = []
         weekly_counts = []
         for week in last_weeks:
             dates.append(week.strftime('%m/%d/%Y'))
             count = AnnotatedRecording.objects.filter(
-                file__gt='', file__isnull=False, session_id=session_key, timestamp__gt=week,
-                timestamp__lt=week + datetime.timedelta(days=7)).count()
+                file__gt='', file__isnull=False, session_id=session_key,
+                timestamp__gt=week, timestamp__lt=week + datetime.timedelta(
+                            days=7)).count()
             weekly_counts.append(count)
 
         recording_count = AnnotatedRecording.objects.filter(
@@ -283,12 +250,16 @@ class Profile(APIView):
                 file__gt='', file__isnull=False, session_id=session_key,
                 timestamp__gt=last_week)
         recent_dict = defaultdict(list)
-        [recent_dict[rec.surah_num].append((rec.ayah_num, rec.file.url)) for rec in recent_recordings]
+        [recent_dict[rec.surah_num].append(
+                (rec.ayah_num, rec.file.url)) for rec in recent_recordings
+        ]
         old_recordings = AnnotatedRecording.objects.filter(
                 file__gt='', file__isnull=False, session_id=session_key,
                 timestamp__lt=last_week)
         old_dict = defaultdict(list)
-        [old_dict[rec.surah_num].append((rec.ayah_num, rec.file.url)) for rec in old_recordings]
+        [old_dict[rec.surah_num].append(
+                (rec.ayah_num, rec.file.url)) for rec in old_recordings
+        ]
 
         recent_lists = _sort_recitations_dict_into_lists(recent_dict)
         old_lists = _sort_recitations_dict_into_lists(old_dict)
