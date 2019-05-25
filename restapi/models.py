@@ -20,7 +20,7 @@ class AnnotatedRecording(models.Model):
     ayah_num = models.IntegerField(blank=True, null=True)
     hash_string = models.CharField(max_length=32)
     recitation_mode = models.CharField(max_length=32, blank=True, null=True)
-    timestamp = models.DateTimeField(auto_now_add=True)  # TODO(implement timeout)
+    timestamp = models.DateTimeField(auto_now_add=True)
     session_id = models.CharField(max_length=32)
     is_evaluated = models.BooleanField(default=False)
     associated_demographic = models.ForeignKey(DemographicInformation,

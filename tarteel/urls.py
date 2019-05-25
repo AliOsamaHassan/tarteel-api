@@ -28,8 +28,6 @@ urlpatterns = [
     # Django-allauth Login
     path('accounts/', include('allauth.urls')),
     path('api-token-auth/', authviews.obtain_auth_token),
-    # Silk
-    path('silk/', include('silk.urls', namespace='silk')),
 ]
 
 if settings.DEBUG:
