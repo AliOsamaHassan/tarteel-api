@@ -14,7 +14,7 @@ import quran.serializers
 
 class SurahFilter(filters.FilterSet):
     """Filter surahs by name, number or ayah number."""
-    ayah = filters.NumberFilter(field_name='ayah__number')
+    ayah = filters.NumberFilter(field_name='ayah__verse_number')
     surah = filters.NumberFilter(field_name='number')
     name = filters.NumberFilter(field_name='name')
 
@@ -33,8 +33,8 @@ class SurahViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AyahFilter(filters.FilterSet):
     """Filter ayahs by sajdahs, surah or ayah numbers."""
-    surah = filters.NumberFilter(field_name='surah__number')
-    ayah = filters.NumberFilter(field_name='number')
+    surah = filters.NumberFilter(field_name='chapter_id__number')
+    ayah = filters.NumberFilter(field_name='verse_number')
     sajdah = filters.BooleanFilter(field_name='sajdah')
 
     class Meta:
@@ -60,11 +60,14 @@ class AyahViewSet(viewsets.ReadOnlyModelViewSet):
         ayah_count = Ayah.objects.count() - 1
         rand_index = random.randint(0, ayah_count)
         rand_ayah = Ayah.objects.all()[rand_index]
-        surah_num = rand_ayah.surah.number
-        ayah_num = rand_ayah.number
-        words = AyahWord.objects.filter(ayah=rand_ayah, ayah__number=ayah_num,
-                                        ayah__surah__number=surah_num)
+        surah_num = rand_ayah.chapter_id.number
+        ayah_num = rand_ayah.verse_number
+        words = AyahWord.objects.filter(ayah=rand_ayah, ayah__verse_number=ayah_num,
+                                        ayah__chapter_id__number=surah_num)
+        translations = Translation.objects.filter(ayah__verse_number=ayah_num,
+                                                  ayah__chapter_id__number=surah_num)
         ayah_dict = model_to_dict(rand_ayah)
+        ayah_dict['translations'] = list(translations.values())
         ayah_dict['words'] = list(reversed(words.values()))
         ayah_dict['session_id'] = session_key
 
@@ -73,8 +76,8 @@ class AyahViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AyahWordFilter(filters.FilterSet):
     """Filter words by surah, ayah, and word number."""
-    surah = filters.NumberFilter(field_name='ayah__surah__number')
-    ayah = filters.NumberFilter(field_name='ayah__number')
+    surah = filters.NumberFilter(field_name='ayah__chapter_id__number')
+    ayah = filters.NumberFilter(field_name='ayah__verse_number')
     number = filters.NumberFilter(field_name='number')
 
     class Meta:
@@ -92,10 +95,10 @@ class AyahWordViewSet(viewsets.ReadOnlyModelViewSet):
 
 class TranslationFilter(filters.FilterSet):
     """Filter translations by surah or ayah number or translation type and language."""
-    surah = filters.NumberFilter(field_name='ayah__surah__number')
-    ayah = filters.NumberFilter(field_name='ayah__number')
-    translation = filters.CharFilter(field_name='translation_type')
-    language = filters.CharFilter(field_name='language')
+    surah = filters.NumberFilter(field_name='ayah__chapter_id__number')
+    ayah = filters.NumberFilter(field_name='ayah__verse_number')
+    translation = filters.CharFilter(field_name='resource_name')
+    language = filters.CharFilter(field_name='language_name')
 
     class Meta:
         model = Translation
@@ -124,24 +127,30 @@ def get_ayah(request, surah, ayah):
     :rtype: Response
     """
     try:
-        curr_ayah = model_to_dict(Ayah.objects.get(number=ayah, surah__number=surah))
+        curr_ayah = model_to_dict(Ayah.objects.get(verse_number=ayah,
+                                                   chapter_id__number=surah))
     except Ayah.DoesNotExist:
         return Response({"detail": "Ayah not found"}, status=status.HTTP_404_NOT_FOUND)
     try:
-        next_ayah = model_to_dict(Ayah.objects.get(number=ayah+1, surah__number=surah))
+        next_ayah = model_to_dict(Ayah.objects.get(verse_number=ayah+1,
+                                                   chapter_id__number=surah))
     except (Ayah.DoesNotExist, AttributeError):
         new_surah = 0 if surah == 114 else surah
-        next_ayah = model_to_dict(Ayah.objects.get(number=1, surah__number=new_surah+1))
+        next_ayah = model_to_dict(Ayah.objects.get(verse_number=1,
+                                                   chapter_id__number=new_surah+1))
     try:
-        prev_ayah = model_to_dict(Ayah.objects.get(number=ayah-1, surah__number=surah))
+        prev_ayah = model_to_dict(Ayah.objects.get(verse_number=ayah-1,
+                                                   chapter_id__number=surah))
     except (Ayah.DoesNotExist, AttributeError):
         new_surah = 115 if surah == 1 else surah
-        prev_ayah = model_to_dict(Ayah.objects.filter(surah__number=new_surah-1).last())
-    response = {
-        'ayah': curr_ayah,
-        'next': next_ayah,
-        'previous': prev_ayah
-    }
+        prev_ayah = model_to_dict(Ayah.objects.filter(chapter_id__number=new_surah-1).last())
+    response = curr_ayah
+    words = AyahWord.objects.filter(ayah__verse_number=ayah,
+                                    ayah__chapter_id__number=surah)
+    translations = Translation.objects.filter(ayah__verse_number=ayah,
+                                              ayah__chapter_id__number=surah)
+    response['words'] = list(reversed(words.values()))
+    response['translations'] = list(translations.values())
 
     return Response(response)
 

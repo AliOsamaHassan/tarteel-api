@@ -3,8 +3,8 @@ import json
 from quran.models import Surah, Ayah, AyahWord, Translation
 from tqdm import tqdm
 
-DATA_JSON_PATH = '/home/piraka/Downloads/data-words.json'
-UTH_JSON_PATH = '/home/piraka/Downloads/data-uthmani.json'
+DATA_JSON_PATH = '/Users/piraka/Downloads/data-words.json'
+UTH_JSON_PATH = '/Users/piraka/Downloads/data-uthmani.json'
 
 
 class Command(BaseCommand):
@@ -31,14 +31,15 @@ class Command(BaseCommand):
                     sajdah = True if verse['sajdah'] else False
                     text_madani = verse['text_madani']
                     text_simple = verse['text_simple']
-                    ayah_number = verse['verse_number']
+                    verse_number = verse['verse_number']
 
                     # Create the ayah
                     try:
-                        new_ayah = Ayah.objects.get(surah=new_surah, number=ayah_number)
+                        new_ayah = Ayah.objects.get(chapter_id=new_surah,
+                                                    verse_number=verse_number)
                     except Ayah.DoesNotExist:
-                        new_ayah = Ayah(surah=new_surah,
-                                        number=ayah_number,
+                        new_ayah = Ayah(chapter_id=new_surah,
+                                        verse_number=verse_number,
                                         text_madani=text_madani,
                                         text_simple=text_simple,
                                         sajdah=sajdah)
@@ -47,6 +48,8 @@ class Command(BaseCommand):
                     # Go over translations
                     for translation in verse['translations']:
                         text = translation['text']
+                        language_name = translation['language_name']
+                        resource_name = translation['resource_name']
                         if translation['language_name'] != 'english':
                             print("non-english translation at: {},{}".format(
                                     surah, verse['verse_number']))
@@ -56,8 +59,8 @@ class Command(BaseCommand):
                                                                       text=text)
                         except Translation.DoesNotExist:
                             new_translation = Translation(
-                                    ayah=new_ayah,
-                                    text=text)
+                                    ayah=new_ayah, resource_name=resource_name,
+                                    text=text, language_name=language_name)
                             new_translation.save()
 
                     # Go over words
