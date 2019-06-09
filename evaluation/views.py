@@ -6,7 +6,6 @@ from django.db.models import Count
 from django.forms.models import model_to_dict
 from django_filters import rest_framework as filters
 # REST
-from rest_framework import serializers
 from rest_framework import status
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -18,7 +17,7 @@ from rest_framework.renderers import JSONRenderer
 from evaluation.models import TajweedEvaluation, Evaluation
 from evaluation.serializers import TajweedEvaluationSerializer, EvaluationSerializer
 from restapi.models import AnnotatedRecording
-from quran.models import Ayah, AyahWord
+from quran.models import Ayah, AyahWord, Translation
 # Python
 import io
 import json
@@ -139,13 +138,16 @@ def get_no_evaluation_recording(surah_num=None, ayah_num=None):
     audio_url = random_recording.file.url
     recording_id = random_recording.id
     # Prep response
-    ayah = Ayah.objects.get(surah__number=surah_num, number=ayah_num)
+    ayah = Ayah.objects.get(chapter_id__number=surah_num, verse_number=ayah_num)
     ayah = model_to_dict(ayah)
     # Get all the words
-    words = AyahWord.objects.filter(ayah__number=ayah_num,
-                                    ayah__surah__number=surah_num)
+    words = AyahWord.objects.filter(ayah__verse_number=ayah_num,
+                                    ayah__chapter_id__number=surah_num)
+    translations = Translation.objects.filter(ayah__verse_number=ayah_num,
+                                              ayah__chapter_id__number=surah_num)
     # Convert to list of dicts, note that order is usually flipped.
     ayah['words'] = list(reversed(words.values()))
+    ayah['translations'] = list(translations.values())
     ayah["audio_url"] = audio_url
     ayah["recording_id"] = recording_id
     return ayah
